@@ -1,0 +1,89 @@
+{{- $chart_name := .Chart.Name }}
+{{- $chart_version := .Chart.Version | replace "+" "_" }}
+{{- $release_name := .Release.Name }}
+
+{{- range $cronJob := .Values.cronJobs }}
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: "{{ $release_name }}-{{ $cronJob.name }}"
+  labels:
+    chart: "{{ $chart_name }}-{{ $chart_version }}"
+spec:
+  concurrencyPolicy: {{ $cronJob.concurrencyPolicy }}
+  failedJobsHistoryLimit: {{ $cronJob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: {{ $release_name }}
+            cron: {{ $cronJob.name }}
+        spec:
+        {{- if hasKey $cronJob "serviceAccount" }}
+        {{- if hasKey $cronJob.serviceAccount "name" }}
+          serviceAccountName: {{ $cronJob.serviceAccount.name }}
+        {{- else }}
+          serviceAccountName: {{ $cronJob.name }}
+        {{- end }}
+        {{- end }}
+        {{- if hasKey $cronJob "securityContext" }}
+          {{- if $cronJob.securityContext.runAsUser }}
+          securityContext:
+            runAsUser: {{ $cronJob.securityContext.runAsUser }}
+            {{- if $cronJob.securityContext.runAsGroup }}
+            runAsGroup: {{ $cronJob.securityContext.runAsGroup }}
+            {{- end }}
+            {{- if $cronJob.securityContext.fsGroup }}
+            fsGroup: {{ $cronJob.securityContext.fsGroup }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+          containers:
+          - image: "{{ $cronJob.image.repository }}:{{ $cronJob.image.tag }}"
+            imagePullPolicy: {{ $cronJob.image.imagePullPolicy }}
+            name: {{ $cronJob.name }}
+            {{- with $cronJob.env }}
+            env:
+{{ toYaml . | indent 12 }}
+            {{- end }}
+            {{- with $cronJob.envFrom }}
+            envFrom:
+{{ toYaml . | indent 12 }}
+            {{- end }}
+            {{- if $cronJob.command }}
+            command: {{ $cronJob.command }}
+            {{- end }}
+            {{- with $cronJob.args }}
+            args:
+{{ toYaml . | indent 12 }}
+              {{- end }}
+            {{- with $cronJob.resources }}
+            resources:
+{{ toYaml . | indent 14 }}
+            {{- end }}
+            {{- with $cronJob.volumeMounts }}
+            volumeMounts:
+{{ toYaml . | indent 12 }}
+            {{- end }}
+          {{- with $cronJob.nodeSelector }}
+          nodeSelector:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          {{- with $cronJob.affinity }}
+          affinity:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          {{- with $cronJob.tolerations }}
+          tolerations:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          restartPolicy: {{ $cronJob.restartPolicy }}
+          {{- with $cronJob.volumes }}
+          volumes:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+  schedule: {{ $cronJob.schedule | quote }}
+  successfulJobsHistoryLimit: {{ $cronJob.successfulJobsHistoryLimit }}
+{{- end }}

@@ -1,0 +1,26 @@
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+
+cronJobs:
+  - name: tsunami
+    image:
+      repository: zivmit/tsunami-security-scanner
+      tag: latest
+      imagePullPolicy: Always
+    schedule: "*/5 * * * *"
+    command: ["/bin/sh"]
+    args:
+      - "-c"
+      - "--ip-v4-target={{ . }}"
+    resources:
+      limits:
+        cpu: 50m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 256Mi
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 3
+    concurrencyPolicy: Forbid
+    restartPolicy: OnFailure
